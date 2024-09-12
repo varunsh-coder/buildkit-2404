@@ -1,0 +1,35 @@
+name: Build Dockerfile with BuildKit and Legacy Docker
+
+on:
+  workflow_dispatch:
+
+jobs:
+  create_and_build_dockerfile:
+    runs-on: ubuntu-latest
+
+    steps:
+    # Step 1: Checkout the code (if necessary)
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    # Step 2: Create a Dockerfile that prints /etc/resolv.conf
+    - name: Create Dockerfile
+      run: |
+        echo "FROM ubuntu:latest" > Dockerfile
+        echo "RUN cat /etc/resolv.conf" >> Dockerfile
+    # Step 3: Set up Docker BuildKit (v0.16.0)
+    - name: Set up Docker BuildKit
+      run: |
+        export DOCKER_BUILDKIT=1
+        curl -fsSL https://github.com/moby/buildkit/releases/download/v0.16.0/buildkit-v0.16.0.linux-amd64.tar.gz | sudo tar -xz -C /usr/local/bin --strip-components=1
+        buildctl --version # Verify BuildKit installation
+    # Step 4: Build Dockerfile using Docker BuildKit with host network
+    - name: Build Dockerfile using Docker BuildKit with host network
+      run: |
+        export DOCKER_BUILDKIT=1 # Enable BuildKit
+        docker build --network host --progress=plain -t print-resolv-conf-buildkit . | tee buildkit.log
+    # Step 5: Build Dockerfile using Docker Legacy system with host network
+    - name: Build Dockerfile using Docker Legacy build with host network
+      run: |
+        export DOCKER_BUILDKIT=0 # Disable BuildKit to use Docker legacy build system
+        docker build --network host -t print-resolv-conf-legacy .
